@@ -648,14 +648,9 @@ const _Space =
     \\        
 ;
 
-const debug =
-    \\aaaaaaaaaa
-    \\bbbbbbbbbb
-;
-
 pub fn charToBigAsciiArt(letter: u8) ![]const u8 {
     if (letter < 65) {
-        if (letter == 32) return debug;
+        if (letter == 32) return _Space;
         return error.InvalidAsciiLetter;
     }
     if (letter > 122) {
