@@ -27,7 +27,7 @@ pub fn main() !void {
         }
 
         try asciiArtCharDisplay.render();
-        try asciiArtCharDisplay.moveCharsX(1);
+        try asciiArtCharDisplay.moveCharXFree(1);
         std.time.sleep(40000000);
         cur.updateFullScreen();
     }

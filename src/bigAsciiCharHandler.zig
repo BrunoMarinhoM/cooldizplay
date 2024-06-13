@@ -4,6 +4,7 @@ const charToBigAsciiArt = @import("letters.zig").charToBigAsciiArt;
 
 fn textToArrayOfStripes(allocator: std.mem.Allocator, str: []u8) ![][]u8 {
     var arrayOfArrayOfStripes = std.ArrayList(*std.ArrayList(u8)).init(allocator);
+    defer arrayOfArrayOfStripes.deinit();
 
     var itt_nline = std.mem.split(u8, str, "\n");
 
@@ -12,6 +13,8 @@ fn textToArrayOfStripes(allocator: std.mem.Allocator, str: []u8) ![][]u8 {
             if (ind + 1 > arrayOfArrayOfStripes.items.len) {
                 const new_stripe = try allocator.create(std.ArrayList(u8));
                 new_stripe.* = std.ArrayList(u8).init(allocator);
+                defer new_stripe.deinit();
+
                 try arrayOfArrayOfStripes.append(new_stripe);
             }
 
@@ -51,15 +54,9 @@ fn renderPerStripe(cur: *Curses, strStripes: [][]u8, xPosition: i16, yPosition: 
     }
 }
 
-fn renderBigAsciiCharPerStripe(cur: *Curses, allocator: std.mem.Allocator, char: u8, xPosition: i16, yPosition: i16) !void {
-    const bigAsciiChar = try charToBigAsciiArt(char);
-    const bigAsciiCharArrayOfStripes = try textToArrayOfStripes(allocator, @ptrCast(@constCast(bigAsciiChar)));
-    try renderPerStripe(cur, bigAsciiCharArrayOfStripes, xPosition, yPosition);
-}
-
 pub const BigAsciiChar = struct {
     position: []i16,
-    bigAsciiChar: []u8,
+    bigAsciiCharStripes: [][]u8,
     char: u8,
     allocator: std.mem.Allocator,
 
@@ -69,11 +66,15 @@ pub const BigAsciiChar = struct {
         const pos = try allocator.alloc(i16, 2);
         pos[0] = 0;
         pos[1] = 0;
-        const structChar = try charToBigAsciiArt(char);
+        const bigAsciiCharStr = try charToBigAsciiArt(char);
+        const bigAsciiCharStripes = try textToArrayOfStripes(
+            allocator,
+            @ptrCast(@constCast(bigAsciiCharStr)),
+        );
 
         return .{
             .position = pos,
-            .bigAsciiChar = @ptrCast(@constCast(structChar)),
+            .bigAsciiCharStripes = bigAsciiCharStripes,
             .char = char,
             .allocator = allocator,
         };
@@ -85,8 +86,7 @@ pub const BigAsciiChar = struct {
         xPosition: i16,
         yPostion: i16,
     ) !void {
-        const stripeBigAsciiChar = try textToArrayOfStripes(self.allocator, self.bigAsciiChar);
-        try renderPerStripe(cur, stripeBigAsciiChar, xPosition, yPostion);
+        try renderPerStripe(cur, self.bigAsciiCharStripes, xPosition, yPostion);
     }
 
     pub fn render(self: Self, cur: *Curses) !void {
@@ -132,7 +132,18 @@ pub const BigAsciiTextDisplay = struct {
         }
     }
 
-    pub fn addBigAsciiChar(self: Self, bigAsciiChar: *BigAsciiChar) !void {
+    pub fn moveCharXFree(self: Self, amount: i16) !void {
+        for (0.., self.bigAsciiCharQueue.items) |ind, bigChar| {
+            if (bigChar.getPosition()[0] >= 30) {
+                try self.freeBigAsciiChar(ind);
+                self.allocator.destroy(self.bigAsciiCharQueue.swapRemove(ind));
+                continue;
+            }
+            bigChar.setPosition(bigChar.getPosition()[0] + amount, bigChar.getPosition()[1]);
+        }
+    }
+
+    fn addBigAsciiChar(self: Self, bigAsciiChar: *BigAsciiChar) !void {
         if (self.bigAsciiCharQueue.items.len == 0) {
             try self.bigAsciiCharQueue.append(bigAsciiChar);
             return;
@@ -152,6 +163,16 @@ pub const BigAsciiTextDisplay = struct {
     pub fn render(self: Self) !void {
         for (self.bigAsciiCharQueue.items) |bigChar| {
             try bigChar.render(self.curses);
+        }
+    }
+
+    fn freeBigAsciiChar(self: Self, index: usize) !void {
+        if (index > self.bigAsciiCharQueue.items.len) {
+            return error.InvalidIndex;
+        }
+
+        for (0..self.bigAsciiCharQueue.items[index].bigAsciiCharStripes.len) |sub_ind| {
+            self.allocator.free(self.bigAsciiCharQueue.items[index].bigAsciiCharStripes[sub_ind]);
         }
     }
 };
