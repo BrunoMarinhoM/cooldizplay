@@ -134,11 +134,12 @@ pub const BigAsciiTextDisplay = struct {
 
     pub fn moveCharXFree(self: Self, amount: i16) !void {
         for (0.., self.bigAsciiCharQueue.items) |ind, bigChar| {
-            if (bigChar.getPosition()[0] >= 30) {
+            if (bigChar.getPosition()[0] >= -50) {
                 try self.freeBigAsciiChar(ind);
                 self.allocator.destroy(self.bigAsciiCharQueue.swapRemove(ind));
                 continue;
             }
+
             bigChar.setPosition(bigChar.getPosition()[0] + amount, bigChar.getPosition()[1]);
         }
     }

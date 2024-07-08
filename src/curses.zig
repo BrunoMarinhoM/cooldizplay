@@ -54,6 +54,7 @@ pub const Curses = struct {
     }
 
     pub fn renderStr(self: Self, str: [:0]u8, place: []i16) !void {
+        if (place.len != 2) return error.InvalidCoordinates;
         _ = self;
         _ = _curses.mvaddstr(@intCast(place[1]), @intCast(place[0]), str);
         _ = _curses.mvcur(0, 0, 0, 0);
