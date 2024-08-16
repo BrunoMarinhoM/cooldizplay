@@ -1,7 +1,7 @@
 const std = @import("std");
 const kbhit = @import("kbhit_2.zig").kbhit;
 const Curses = @import("curses.zig").Curses;
-const bigAsciiCharDisplay = @import("bigAsciiCharHandler.zig").BigAsciiTextDisplay;
+const bigAsciiCharArray = @import("bigAsciiCharHandler.zig").BigAsciiCharArray;
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const child_alloc = gpa.allocator();
 var arena = std.heap.ArenaAllocator.init(child_alloc);
@@ -13,7 +13,7 @@ pub fn main() !void {
 
     var cur = Curses.init();
 
-    const asciiArtCharDisplay = try bigAsciiCharDisplay.init(local_alloc, &cur);
+    const asciiArtArray = try bigAsciiCharArray.init(local_alloc, &cur);
 
     while (true) {
         const internal_hit_counter = try kbhit();
@@ -23,12 +23,12 @@ pub fn main() !void {
             var buff = [_]u8{0};
             _ = try stdin.read(&buff);
 
-            try asciiArtCharDisplay.addChar(buff[0]);
+            try asciiArtArray.addChar(buff[0]);
         }
 
-        try asciiArtCharDisplay.render();
+        try asciiArtArray.render();
         std.time.sleep(40000000);
-        try asciiArtCharDisplay.moveCharXFree(1);
+        try asciiArtArray.moveCharXFree(1);
         cur.updateFullScreen();
     }
 }
